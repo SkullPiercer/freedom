@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 
-from sqlalchemy import DateTime, func, text
+from sqlalchemy import DateTime, func, Integer, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -18,6 +18,7 @@ class PreBase:
     def __tablename__(cls) -> str:
         return cls.__name__.lower()
 
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
 
