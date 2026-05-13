@@ -34,3 +34,7 @@ class NoteListResponse(BaseModel):
     limit: int
     offset: int
     total: int
+
+
+class NoteDeleteResponse(BaseModel):
+    message: str

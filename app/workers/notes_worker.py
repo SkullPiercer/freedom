@@ -17,107 +17,114 @@ def dump_model(model):
     return model.model_dump(mode="json")
 
 
+def error_response(status_code: int, error: str) -> dict:
+    return {
+        "ok": False,
+        "status_code": status_code,
+        "error": error,
+    }
+
+
+async def handle_create_note(db: DBManager, user_id: int, payload: dict) -> dict:
+    note = await db.note.create_for_user(
+        user_id=user_id,
+        note=NoteCreateRequest(**payload),
+    )
+    await db.commit()
+    return {"ok": True, "data": dump_model(note)}
+
+
+async def handle_list_notes(db: DBManager, user_id: int, payload: dict) -> dict:
+    limit = payload.get("limit", 20)
+    offset = payload.get("offset", 0)
+    result = await db.note.list_for_user(
+        user_id=user_id,
+        limit=limit,
+        offset=offset,
+        search=payload.get("search"),
+        is_archived=payload.get("is_archived"),
+    )
+    response = NoteListResponse(
+        items=result["items"],
+        limit=limit,
+        offset=offset,
+        total=result["total"],
+    )
+    return {"ok": True, "data": dump_model(response)}
+
+
+async def handle_get_note(db: DBManager, user_id: int, payload: dict) -> dict:
+    note = await db.note.get_for_user(
+        user_id=user_id,
+        note_id=payload["note_id"],
+    )
+    if note is None:
+        return error_response(status.HTTP_404_NOT_FOUND, "Note not found")
+    return {"ok": True, "data": dump_model(note)}
+
+
+async def handle_update_note(db: DBManager, user_id: int, payload: dict) -> dict:
+    note_id = payload.pop("note_id")
+    note = await db.note.update_for_user(
+        user_id=user_id,
+        note_id=note_id,
+        note=NoteUpdateRequest(**payload),
+    )
+    if note is None:
+        return error_response(status.HTTP_404_NOT_FOUND, "Note not found")
+
+    await db.commit()
+    return {"ok": True, "data": dump_model(note)}
+
+
+async def handle_archive_note(db: DBManager, user_id: int, payload: dict) -> dict:
+    note = await db.note.archive_for_user(
+        user_id=user_id,
+        note_id=payload["note_id"],
+    )
+    if note is None:
+        return error_response(status.HTTP_404_NOT_FOUND, "Note not found")
+
+    await db.commit()
+    return {"ok": True, "data": dump_model(note)}
+
+
+async def handle_delete_note(db: DBManager, user_id: int, payload: dict) -> dict:
+    is_deleted = await db.note.delete_for_user(
+        user_id=user_id,
+        note_id=payload["note_id"],
+    )
+    if not is_deleted:
+        return error_response(status.HTTP_404_NOT_FOUND, "Note not found")
+
+    await db.commit()
+    return {"ok": True, "data": {"message": "Note deleted successfully"}}
+
+
+NOTE_HANDLERS = {
+    "create_note": handle_create_note,
+    "list_notes": handle_list_notes,
+    "get_note": handle_get_note,
+    "update_note": handle_update_note,
+    "archive_note": handle_archive_note,
+    "delete_note": handle_delete_note,
+}
+
+
 async def handle_notes_request(message: dict) -> dict:
     action = message.get("action")
     user_id = message.get("user_id")
     payload = message.get("payload") or {}
 
     if user_id is None:
-        return {
-            "ok": False,
-            "status_code": status.HTTP_401_UNAUTHORIZED,
-            "error": "User is required",
-        }
+        return error_response(status.HTTP_401_UNAUTHORIZED, "User is required")
+
+    handler = NOTE_HANDLERS.get(action)
+    if handler is None:
+        return error_response(status.HTTP_400_BAD_REQUEST, f"Unknown action: {action}")
 
     async with DBManager(async_session_maker) as db:
-        if action == "create_note":
-            note = await db.note.create_for_user(
-                user_id=user_id,
-                note=NoteCreateRequest(**payload),
-            )
-            await db.commit()
-            return {"ok": True, "data": dump_model(note)}
-
-        if action == "list_notes":
-            limit = payload.get("limit", 20)
-            offset = payload.get("offset", 0)
-            result = await db.note.list_for_user(
-                user_id=user_id,
-                limit=limit,
-                offset=offset,
-                search=payload.get("search"),
-                is_archived=payload.get("is_archived"),
-            )
-            response = NoteListResponse(
-                items=result["items"],
-                limit=limit,
-                offset=offset,
-                total=result["total"],
-            )
-            return {"ok": True, "data": dump_model(response)}
-
-        if action == "get_note":
-            note = await db.note.get_for_user(
-                user_id=user_id,
-                note_id=payload["note_id"],
-            )
-            if note is None:
-                return {
-                    "ok": False,
-                    "status_code": status.HTTP_404_NOT_FOUND,
-                    "error": "Note not found",
-                }
-            return {"ok": True, "data": dump_model(note)}
-
-        if action == "update_note":
-            note_id = payload.pop("note_id")
-            note = await db.note.update_for_user(
-                user_id=user_id,
-                note_id=note_id,
-                note=NoteUpdateRequest(**payload),
-            )
-            if note is None:
-                return {
-                    "ok": False,
-                    "status_code": status.HTTP_404_NOT_FOUND,
-                    "error": "Note not found",
-                }
-            await db.commit()
-            return {"ok": True, "data": dump_model(note)}
-
-        if action == "archive_note":
-            note = await db.note.archive_for_user(
-                user_id=user_id,
-                note_id=payload["note_id"],
-            )
-            if note is None:
-                return {
-                    "ok": False,
-                    "status_code": status.HTTP_404_NOT_FOUND,
-                    "error": "Note not found",
-                }
-            await db.commit()
-            return {"ok": True, "data": dump_model(note)}
-
-        if action == "delete_note":
-            is_deleted = await db.note.delete_for_user(
-                user_id=user_id,
-                note_id=payload["note_id"],
-            )
-            if not is_deleted:
-                return {
-                    "ok": False,
-                    "status_code": status.HTTP_404_NOT_FOUND,
-                    "error": "Note not found",
-                }
-            await db.commit()
-            return {"ok": True, "data": {"message": "Note deleted successfully"}}
-
-    return {
-        "ok": False,
-        "status_code": status.HTTP_400_BAD_REQUEST,
-        "error": f"Unknown action: {action}",
-    }
+        return await handler(db, user_id, payload)
 
 
 async def main():

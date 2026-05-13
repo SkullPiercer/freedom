@@ -16,6 +16,7 @@ from app.api.schemas.user import (
     UserLoginRequest,
     UserLoginResponse,
     UserLogoutResponse,
+    UserPublicSchema,
     UserRefreshTokenRequest,
     UserRefreshTokenResponse,
 )
@@ -143,10 +144,18 @@ class UserService(BaseService):
             updated_at=user.updated_at,
         )
 
+    def create_user_public_schema(self, user) -> UserPublicSchema:
+        return UserPublicSchema(
+            id=user.id,
+            email=user.email,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        )
+
     async def create_auth_response(self, user, response_schema):
         tokens = await self.token_service.create_token_pair(user.id)
         return response_schema(
-            user=self.create_user_db_schema(user),
+            user=self.create_user_public_schema(user),
             access_token=tokens.access_token,
             refresh_token=tokens.refresh_token,
         )

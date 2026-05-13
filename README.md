@@ -132,7 +132,7 @@ alembic upgrade head
 ### Регистрация
 
 ```http
-POST /
+POST /auth/register
 ```
 
 Body:
@@ -149,7 +149,7 @@ Body:
 ### Логин
 
 ```http
-POST /login
+POST /auth/login
 ```
 
 Body:
@@ -164,7 +164,7 @@ Body:
 ### Обновление Токенов
 
 ```http
-POST /refresh
+POST /auth/refresh
 ```
 
 Refresh token берётся из `HttpOnly` cookie `refresh_token`. Для Postman, Swagger или CLI можно передать refresh token в body:
@@ -187,10 +187,24 @@ Refresh token берётся из `HttpOnly` cookie `refresh_token`. Для Post
 ### Logout
 
 ```http
-POST /logout
+POST /auth/logout
 ```
 
 Logout удаляет refresh token из Redis и очищает auth cookies.
+
+## Healthcheck
+
+```http
+GET /health
+```
+
+Ответ:
+
+```json
+{
+  "status": "ok"
+}
+```
 
 ## Заметки
 

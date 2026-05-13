@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import HTTPException, status
 
 from app.connectors.rabbitmq_connector import rabbitmq_manager
@@ -6,14 +8,20 @@ from app.core.config import settings
 
 class NotesRPCService:
     async def call(self, action: str, user_id: int, payload: dict | None = None):
-        response = await rabbitmq_manager.call(
-            queue_name=settings.RABBITMQ.NOTES_QUEUE,
-            payload={
-                "action": action,
-                "user_id": user_id,
-                "payload": payload or {},
-            },
-        )
+        try:
+            response = await rabbitmq_manager.call(
+                queue_name=settings.RABBITMQ.NOTES_QUEUE,
+                payload={
+                    "action": action,
+                    "user_id": user_id,
+                    "payload": payload or {},
+                },
+            )
+        except asyncio.TimeoutError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+                detail="Notes worker did not respond in time",
+            ) from exc
 
         if not response.get("ok"):
             raise HTTPException(

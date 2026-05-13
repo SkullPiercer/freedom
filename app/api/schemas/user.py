@@ -32,6 +32,12 @@ class UserDBSchema(UserCreateSchema):
     updated_at: datetime
 
 
+class UserPublicSchema(UserEmailSchema):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class TokenPairSchema(BaseModel):
     access_token: str
     refresh_token: str
@@ -42,7 +48,7 @@ class AuthTokenResponse(TokenPairSchema):
 
 
 class UserAuthResponse(AuthTokenResponse):
-    user: UserDBSchema
+    user: UserPublicSchema
 
 
 class UserCreateResponse(UserAuthResponse):
