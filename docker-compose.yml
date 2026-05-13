@@ -1,0 +1,45 @@
+services:
+  auth:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      auth_database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+
+  auth_database:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES__USER}
+      POSTGRES_PASSWORD: ${POSTGRES__PASSWORD}
+      POSTGRES_DB: ${POSTGRES__DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES__USER} -d ${POSTGRES__DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:latest
+    environment:
+      REDIS_PASSWORD: ${REDIS__PASSWORD}
+      REDIS_PORT: ${REDIS__PORT}
+      REDIS_HOST: ${REDIS__HOST}
+    ports:
+      - ${REDIS__PORT}:${REDIS__PORT}
+    volumes:
+      - redis_data:/data
+
+volumes:
+  auth_data:
+  redis_data:
