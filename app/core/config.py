@@ -48,6 +48,7 @@ class RabbitMQSettings(BaseModel):
     USER: str
     PASSWORD: str
     NOTES_QUEUE: str = "notes_rpc"
+    RPC_TIMEOUT_SECONDS: int = 10
 
     @cached_property
     def URL(self) -> str:

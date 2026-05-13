@@ -8,7 +8,7 @@ from aio_pika.abc import AbstractChannel, AbstractRobustConnection
 
 from app.core.config import settings
 
-logging = logging.getLogger("uvicorn.error")
+logger = logging.getLogger("uvicorn.error")
 
 
 class RabbitMQConnector:
@@ -24,7 +24,7 @@ class RabbitMQConnector:
         self.channel = await self.connection.channel()
         self.callback_queue = await self.channel.declare_queue(exclusive=True)
         await self.callback_queue.consume(self.on_response, no_ack=True)
-        logging.info("RabbitMQ connected successfully")
+        logger.info("RabbitMQ connected successfully")
 
     async def disconnect(self):
         if self.connection:

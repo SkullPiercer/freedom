@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Cookie, Depends, Header
 
 from app.exceptions.auth import InvalidTokenException
-from app.services.user import TokenService
+from app.services.token import TokenService
 
 
 async def get_current_user_id(

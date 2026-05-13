@@ -284,7 +284,10 @@ API отправляет команды в очередь:
 
 ```env
 RABBITMQ__NOTES_QUEUE=notes_rpc
+RABBITMQ__RPC_TIMEOUT_SECONDS=10
 ```
+
+Если worker не ответит за `RABBITMQ__RPC_TIMEOUT_SECONDS`, API вернёт `504 Gateway Timeout`.
 
 Формат запроса:
 

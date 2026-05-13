@@ -16,6 +16,7 @@ class NotesRPCService:
                     "user_id": user_id,
                     "payload": payload or {},
                 },
+                timeout=settings.RABBITMQ.RPC_TIMEOUT_SECONDS,
             )
         except asyncio.TimeoutError as exc:
             raise HTTPException(
