@@ -9,17 +9,19 @@ from app.core.db import check_db_connection, engine
 from app.api.routers import main_router
 from app.exceptions import register_exception_handlers
 from app.connectors.redis_connector import redis_manager
+from app.connectors.rabbitmq_connector import rabbitmq_manager
 
 logger = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     await redis_manager.connect()
-    logger.info("Redis connected successfully")
-
+    await rabbitmq_manager.connect()
     await check_db_connection()
-    logger.info("Database connected")
     yield
+
+    await rabbitmq_manager.disconnect()
+    logger.info("RabbitMQ disconnected")
 
     await redis_manager.disconnect()
     logger.info("Redis disconnected")

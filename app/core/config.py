@@ -41,6 +41,18 @@ class CookieSettings(BaseModel):
     SAMESITE: Literal["lax", "strict", "none"] = "lax"
 
 
+class RabbitMQSettings(BaseModel):
+    HOST: str
+    PORT: int
+    USER: str
+    PASSWORD: str
+    NOTES_QUEUE: str = "notes_rpc"
+
+    @cached_property
+    def URL(self) -> str:
+        return f"amqp://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/"
+
+
 class Settings(BaseSettings):
     APP_TITLE: str
     MODE: Literal['local', 'dev', 'prod', 'test'] = 'local'
@@ -50,6 +62,7 @@ class Settings(BaseSettings):
 
     JWT: JWTSettings
     COOKIE: CookieSettings
+    RABBITMQ: RabbitMQSettings
 
     model_config = SettingsConfigDict(
         env_file=".env",

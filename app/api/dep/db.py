@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.core.db import async_session_maker
-from app.db.crud import UserCRUD
+from app.db.crud import NoteCRUD, UserCRUD
 
 class DBManager:
     def __init__(self, session_factory):
@@ -12,6 +12,7 @@ class DBManager:
     async def __aenter__(self):
         self.session = self.session_factory()
 
+        self.note = NoteCRUD(self.session)
         self.user = UserCRUD(self.session)
         
         return self
