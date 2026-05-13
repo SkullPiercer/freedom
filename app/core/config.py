@@ -32,6 +32,7 @@ class JWTSettings(BaseModel):
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
+    REFRESH_TOKEN_EXPIRE_MINUTES: int
 
 class Settings(BaseSettings):
     APP_TITLE: str

@@ -27,6 +27,30 @@ class UserDBSchema(BaseModel):
     updated_at: datetime
 
 
+class TokenPairSchema(BaseModel):
+    access_token: str
+    refresh_token: str
+
+
 class UserCreateResponse(BaseModel):
     user: UserDBSchema
+    access_token: str
+    refresh_token: str
+
+class UserLoginRequest(BaseModel):
+    email: EmailStr
+    password: SecretStr
+
+
+class UserLoginResponse(BaseModel):
+    user: UserDBSchema
+    access_token: str
+    refresh_token: str
+
+
+class UserRefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class UserRefreshTokenResponse(BaseModel):
     access_token: str
