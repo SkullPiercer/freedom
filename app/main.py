@@ -7,6 +7,7 @@ import uvicorn
 from app.core.config import settings
 from app.core.db import check_db_connection
 from app.api.routers import main_router
+from app.exceptions import register_exception_handlers
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -19,6 +20,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 
 app.include_router(main_router)
+register_exception_handlers(app)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

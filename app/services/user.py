@@ -1,12 +1,16 @@
 import logging
 
 import jwt
-from pwdlib import PasswordHash
 from datetime import datetime, timedelta, timezone
+from jwt import PyJWTError
+from pwdlib import PasswordHash
+from asyncpg.exceptions import UniqueViolationError
 
 from app.services.base import BaseService
 from app.api.schemas.user import UserCreateRequest, UserCreateResponse, UserCreateSchema
 from app.core.config import settings
+from app.exceptions.auth import InvalidTokenException
+from app.exceptions.base import DataAlreadyExistsException
 
 class PasswordService:
     password_hash = PasswordHash.recommended()
@@ -35,9 +39,9 @@ class TokenService:
             return jwt.decode(
                 data, settings.JWT.SECRET_KEY, algorithms=[settings.JWT.ALGORITHM]
             )
-        except Exception as e:
+        except PyJWTError as e:
             logging.error(e)
-            raise Exception(f"Failed to decode token: {e}")
+            raise InvalidTokenException() from e
     
 
 class UserService(BaseService):
@@ -50,10 +54,17 @@ class UserService(BaseService):
             email=user.email,
             hashed_password=self.password_service.get_password_hash(password)
         )
-        new_user = await self.db.user.create(validated_data)
-        access_token = self.token_service.create_access_token({"user_id": new_user.id})
+        try:
+            new_user = await self.db.user.create(validated_data)
+            access_token = self.token_service.create_access_token({"user_id": new_user.id})
 
-        await self.db.commit()
+            await self.db.commit()
+        
+        except Exception as e:
+            if isinstance(getattr(e.orig, "__cause__", None), UniqueViolationError):
+                raise DataAlreadyExistsException()
+            raise
+
         return UserCreateResponse(
             user=new_user,
             access_token=access_token,
