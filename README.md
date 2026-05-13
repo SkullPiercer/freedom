@@ -115,6 +115,8 @@ POSTGRES__HOST=localhost
 alembic upgrade head
 ```
 
+Флаг `RUN_MIGRATIONS` управляет запуском миграций в контейнере. API-контейнер `auth` запускает миграции по умолчанию, а `notes_worker` использует тот же Docker image, но стартует с `RUN_MIGRATIONS=false`, чтобы не запускать Alembic параллельно.
+
 Создать новую миграцию:
 
 ```bash

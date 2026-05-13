@@ -10,6 +10,8 @@ from app.connectors.redis_connector import redis_manager
 from app.core.config import settings
 from app.exceptions.auth import InvalidTokenException
 
+logger = logging.getLogger("uvicorn.error")
+
 
 class TokenService:
     refresh_token_key_prefix = "refresh_token"
@@ -68,7 +70,7 @@ class TokenService:
                 raise InvalidTokenException()
             return payload
         except PyJWTError as e:
-            logging.error(e)
+            logger.warning("Failed to decode %s token: %s", token_type, e)
             raise InvalidTokenException() from e
 
     def decode_access_token(self, data: str) -> dict:
