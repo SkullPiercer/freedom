@@ -175,6 +175,8 @@ Refresh token берётся из `HttpOnly` cookie `refresh_token`. Для Post
 }
 ```
 
+Такой дополнительный способ передачи оставлен специально для проверки API вне браузера. В браузерном сценарии основным вариантом остаются `HttpOnly` cookies.
+
 При refresh выполняется rotation:
 
 - старый refresh token удаляется из Redis;
@@ -196,6 +198,8 @@ Logout удаляет refresh token из Redis и очищает auth cookies.
 
 - через `HttpOnly` cookie `access_token`;
 - через заголовок `Authorization: Bearer <access_token>`.
+
+Поддержка `Authorization`-заголовка нужна для Swagger, Postman, CLI-клиентов и автоматических тестов. Для обычного browser flow токен берётся из cookie.
 
 ### Создать Заметку
 
