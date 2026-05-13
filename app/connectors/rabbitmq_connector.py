@@ -1,14 +1,15 @@
 import asyncio
 import json
+import logging
 from uuid import uuid4
 
 import aio_pika
-import logging
 from aio_pika.abc import AbstractChannel, AbstractRobustConnection
 
 from app.core.config import settings
 
 logging = logging.getLogger("uvicorn.error")
+
 
 class RabbitMQConnector:
     def __init__(self, url: str):

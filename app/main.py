@@ -1,17 +1,18 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
+from app.api.routers import main_router
+from app.connectors.rabbitmq_connector import rabbitmq_manager
+from app.connectors.redis_connector import redis_manager
 from app.core.config import settings
 from app.core.db import check_db_connection, engine
-from app.api.routers import main_router
 from app.exceptions import register_exception_handlers
-from app.connectors.redis_connector import redis_manager
-from app.connectors.rabbitmq_connector import rabbitmq_manager
 
 logger = logging.getLogger("uvicorn.error")
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -28,6 +29,7 @@ async def lifespan(_: FastAPI):
 
     await engine.dispose()
     logger.info("Database disconnected")
+
 
 app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 

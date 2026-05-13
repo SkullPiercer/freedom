@@ -1,17 +1,18 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 
-from sqlalchemy import DateTime, func, Integer, text
+from sqlalchemy import DateTime, Integer, func, text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import Mapped, declared_attr, declarative_base, mapped_column
+from sqlalchemy.orm import Mapped, declarative_base, declared_attr, mapped_column
 
 from app.core.config import settings
 
 logger = logging.getLogger("uvicorn.error")
+
 
 class PreBase:
     @declared_attr
@@ -20,7 +21,9 @@ class PreBase:
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), onupdate=func.now()
+    )
 
 
 engine = create_async_engine(settings.POSTGRES.DB_URL)

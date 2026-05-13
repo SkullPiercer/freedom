@@ -2,17 +2,18 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Cookie, Response
 
+from app.api.api_decorators.user import clear_auth_cookies, set_auth_cookies
+from app.api.dep.db import DBDep
 from app.api.schemas.user import (
     UserCreateRequest,
     UserLoginRequest,
     UserRefreshTokenRequest,
 )
-from app.api.dep.db import DBDep
-from app.services.user import UserService
-from app.api.api_decorators.user import clear_auth_cookies, set_auth_cookies
 from app.exceptions.auth import InvalidTokenException
+from app.services.user import UserService
 
 router = APIRouter()
+
 
 @router.post("/")
 @set_auth_cookies
@@ -37,7 +38,9 @@ async def refresh_token(
         Cookie(alias="refresh_token"),
     ] = None,
 ):
-    refresh_token_value = refresh_token_cookie or (token.refresh_token if token else None)
+    refresh_token_value = refresh_token_cookie or (
+        token.refresh_token if token else None
+    )
     if refresh_token_value is None:
         raise InvalidTokenException()
 
@@ -57,7 +60,9 @@ async def logout(
         Cookie(alias="refresh_token"),
     ] = None,
 ):
-    refresh_token_value = refresh_token_cookie or (token.refresh_token if token else None)
+    refresh_token_value = refresh_token_cookie or (
+        token.refresh_token if token else None
+    )
     return await UserService(db).logout(
         UserRefreshTokenRequest(refresh_token=refresh_token_value)
     )

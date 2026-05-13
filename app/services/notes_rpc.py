@@ -33,7 +33,9 @@ class NotesRPCService:
         return await self.call("list_notes", user_id=user_id, payload=payload)
 
     async def get_note(self, user_id: int, note_id: int):
-        return await self.call("get_note", user_id=user_id, payload={"note_id": note_id})
+        return await self.call(
+            "get_note", user_id=user_id, payload={"note_id": note_id}
+        )
 
     async def update_note(self, user_id: int, note_id: int, payload: dict):
         return await self.call(

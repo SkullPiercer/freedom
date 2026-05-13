@@ -1,13 +1,12 @@
 import logging
-
-import jwt
 from datetime import datetime, timedelta, timezone
-from jwt import PyJWTError
-from pwdlib import PasswordHash
-from asyncpg.exceptions import UniqueViolationError
 from uuid import uuid4
 
-from app.services.base import BaseService
+import jwt
+from asyncpg.exceptions import UniqueViolationError
+from jwt import PyJWTError
+from pwdlib import PasswordHash
+
 from app.api.schemas.user import (
     TokenPairSchema,
     UserCreateRequest,
@@ -20,11 +19,13 @@ from app.api.schemas.user import (
     UserRefreshTokenRequest,
     UserRefreshTokenResponse,
 )
-from app.core.config import settings
 from app.connectors.redis_connector import redis_manager
+from app.core.config import settings
 from app.exceptions.auth import InvalidTokenException
 from app.exceptions.base import DataAlreadyExistsException
-from app.exceptions.user import UserNotFoundException, InvalidPasswordException
+from app.exceptions.user import InvalidPasswordException, UserNotFoundException
+from app.services.base import BaseService
+
 
 class PasswordService:
     password_hash = PasswordHash.recommended()
@@ -42,7 +43,9 @@ class TokenService:
     def get_refresh_token_key(self, jti: str) -> str:
         return f"{self.refresh_token_key_prefix}:{jti}"
 
-    def create_token(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
+    def create_token(
+        self, data: dict, expires_delta: timedelta, token_type: str
+    ) -> str:
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + expires_delta
         to_encode["exp"] = expire
@@ -125,7 +128,7 @@ class TokenService:
     async def revoke_refresh_token(self, refresh_token: str) -> None:
         payload = await self.validate_refresh_token(refresh_token)
         await redis_manager.delete(self.get_refresh_token_key(payload["jti"]))
-    
+
 
 class UserService(BaseService):
     password_service = PasswordService()
@@ -152,13 +155,13 @@ class UserService(BaseService):
         password = user.password.get_secret_value()
         validated_data = UserCreateSchema(
             email=user.email,
-            hashed_password=self.password_service.get_password_hash(password)
+            hashed_password=self.password_service.get_password_hash(password),
         )
         try:
             new_user = await self.db.user.create(validated_data)
 
             await self.db.commit()
-        
+
         except Exception as e:
             orig = getattr(e, "orig", None)
             if isinstance(getattr(orig, "__cause__", None), UniqueViolationError):

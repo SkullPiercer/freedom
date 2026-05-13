@@ -5,6 +5,7 @@ from fastapi import Depends
 from app.core.db import async_session_maker
 from app.db.crud import NoteCRUD, UserCRUD
 
+
 class DBManager:
     def __init__(self, session_factory):
         self.session_factory = session_factory
@@ -14,7 +15,7 @@ class DBManager:
 
         self.note = NoteCRUD(self.session)
         self.user = UserCRUD(self.session)
-        
+
         return self
 
     async def __aexit__(self, *args):

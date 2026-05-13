@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
+
 from app.exceptions.base import BaseAppException
+
 
 class UserNotFoundException(BaseAppException):
     detail = "User not found!"
@@ -31,10 +33,7 @@ async def invalid_password_exception_handler(
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    app.add_exception_handler(
-        UserNotFoundException,
-        user_not_found_exception_handler
-    )
+    app.add_exception_handler(UserNotFoundException, user_not_found_exception_handler)
     app.add_exception_handler(
         InvalidPasswordException,
         invalid_password_exception_handler,

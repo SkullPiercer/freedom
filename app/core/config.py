@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class PostgresSettings(BaseModel):
     HOST: str
     PORT: int
@@ -16,7 +17,7 @@ class PostgresSettings(BaseModel):
         return (
             f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}"
             f"@{self.HOST}:{self.PORT}/{self.DB}"
-        )   
+        )
 
 
 class RedisSettings(BaseModel):
@@ -55,7 +56,7 @@ class RabbitMQSettings(BaseModel):
 
 class Settings(BaseSettings):
     APP_TITLE: str
-    MODE: Literal['local', 'dev', 'prod', 'test'] = 'local'
+    MODE: Literal["local", "dev", "prod", "test"] = "local"
 
     POSTGRES: PostgresSettings
     REDIS: RedisSettings
@@ -75,5 +76,6 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     return Settings()
+
 
 settings = get_settings()
