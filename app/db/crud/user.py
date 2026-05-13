@@ -11,4 +11,7 @@ class UserCRUD(CRUDBase):
     async def get_by_email(self, email: str) -> User | None:
         query = select(self.model).where(self.model.email == email)
         result = await self.session.execute(query)
-        return self.mapper.map_to_domain_entity(result.scalars().one_or_none())
+        user = result.scalars().one_or_none()
+        if user is None:
+            return None
+        return self.mapper.map_to_domain_entity(user)

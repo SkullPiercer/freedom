@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from jwt import PyJWTError
 from pwdlib import PasswordHash
 from asyncpg.exceptions import UniqueViolationError
+from uuid import uuid4
 
 from app.services.base import BaseService
 from app.api.schemas.user import (
@@ -15,10 +16,12 @@ from app.api.schemas.user import (
     UserDBSchema,
     UserLoginRequest,
     UserLoginResponse,
+    UserLogoutResponse,
     UserRefreshTokenRequest,
     UserRefreshTokenResponse,
 )
 from app.core.config import settings
+from app.connectors.redis_connector import redis_manager
 from app.exceptions.auth import InvalidTokenException
 from app.exceptions.base import DataAlreadyExistsException
 from app.exceptions.user import UserNotFoundException, InvalidPasswordException
@@ -34,6 +37,11 @@ class PasswordService:
 
 
 class TokenService:
+    refresh_token_key_prefix = "refresh_token"
+
+    def get_refresh_token_key(self, jti: str) -> str:
+        return f"{self.refresh_token_key_prefix}:{jti}"
+
     def create_token(self, data: dict, expires_delta: timedelta, token_type: str) -> str:
         to_encode = data.copy()
         expire = datetime.now(timezone.utc) + expires_delta
@@ -51,18 +59,27 @@ class TokenService:
             token_type="access",
         )
 
-    def create_refresh_token(self, data: dict) -> str:
+    def create_refresh_token(self, data: dict, jti: str) -> str:
         return self.create_token(
-            data=data,
+            data={**data, "jti": jti},
             expires_delta=timedelta(minutes=settings.JWT.REFRESH_TOKEN_EXPIRE_MINUTES),
             token_type="refresh",
         )
 
-    def create_token_pair(self, user_id: int) -> TokenPairSchema:
+    async def save_refresh_token(self, user_id: int, jti: str) -> None:
+        await redis_manager.set(
+            key=self.get_refresh_token_key(jti),
+            value=str(user_id),
+            exp=settings.JWT.REFRESH_TOKEN_EXPIRE_MINUTES * 60,
+        )
+
+    async def create_token_pair(self, user_id: int) -> TokenPairSchema:
+        jti = str(uuid4())
         token_data = {"user_id": user_id}
+        await self.save_refresh_token(user_id=user_id, jti=jti)
         return TokenPairSchema(
             access_token=self.create_access_token(token_data),
-            refresh_token=self.create_refresh_token(token_data),
+            refresh_token=self.create_refresh_token(token_data, jti=jti),
         )
 
     def decode_token(self, data: str, token_type: str) -> dict:
@@ -82,6 +99,32 @@ class TokenService:
 
     def decode_refresh_token(self, data: str) -> dict:
         return self.decode_token(data, token_type="refresh")
+
+    async def validate_refresh_token(self, refresh_token: str) -> dict:
+        payload = self.decode_refresh_token(refresh_token)
+        user_id = payload.get("user_id")
+        jti = payload.get("jti")
+
+        if user_id is None or jti is None:
+            raise InvalidTokenException()
+
+        stored_user_id = await redis_manager.get(self.get_refresh_token_key(jti))
+        if stored_user_id != str(user_id):
+            raise InvalidTokenException()
+
+        return payload
+
+    async def rotate_refresh_token(self, refresh_token: str) -> TokenPairSchema:
+        payload = await self.validate_refresh_token(refresh_token)
+        user_id = payload["user_id"]
+        jti = payload["jti"]
+
+        await redis_manager.delete(self.get_refresh_token_key(jti))
+        return await self.create_token_pair(user_id=user_id)
+
+    async def revoke_refresh_token(self, refresh_token: str) -> None:
+        payload = await self.validate_refresh_token(refresh_token)
+        await redis_manager.delete(self.get_refresh_token_key(payload["jti"]))
     
 
 class UserService(BaseService):
@@ -97,8 +140,8 @@ class UserService(BaseService):
             updated_at=user.updated_at,
         )
 
-    def create_auth_response(self, user, response_schema):
-        tokens = self.token_service.create_token_pair(user.id)
+    async def create_auth_response(self, user, response_schema):
+        tokens = await self.token_service.create_token_pair(user.id)
         return response_schema(
             user=self.create_user_db_schema(user),
             access_token=tokens.access_token,
@@ -117,11 +160,12 @@ class UserService(BaseService):
             await self.db.commit()
         
         except Exception as e:
-            if isinstance(getattr(e.orig, "__cause__", None), UniqueViolationError):
+            orig = getattr(e, "orig", None)
+            if isinstance(getattr(orig, "__cause__", None), UniqueViolationError):
                 raise DataAlreadyExistsException()
             raise
 
-        return self.create_auth_response(new_user, UserCreateResponse)
+        return await self.create_auth_response(new_user, UserCreateResponse)
 
     async def login(self, user: UserLoginRequest) -> UserLoginResponse:
         db_user = await self.db.user.get_by_email(user.email)
@@ -132,16 +176,23 @@ class UserService(BaseService):
             db_user.hashed_password,
         ):
             raise InvalidPasswordException()
-        return self.create_auth_response(db_user, UserLoginResponse)
+        return await self.create_auth_response(db_user, UserLoginResponse)
 
     async def refresh_token(
         self,
         token: UserRefreshTokenRequest,
     ) -> UserRefreshTokenResponse:
-        payload = self.token_service.decode_refresh_token(token.refresh_token)
-        user_id = payload.get("user_id")
-        if user_id is None:
+        if not token.refresh_token:
             raise InvalidTokenException()
 
-        access_token = self.token_service.create_access_token({"user_id": user_id})
-        return UserRefreshTokenResponse(access_token=access_token)
+        tokens = await self.token_service.rotate_refresh_token(token.refresh_token)
+        return UserRefreshTokenResponse(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+        )
+
+    async def logout(self, token: UserRefreshTokenRequest) -> UserLogoutResponse:
+        if token.refresh_token:
+            await self.token_service.revoke_refresh_token(token.refresh_token)
+
+        return UserLogoutResponse(message="Logged out successfully")

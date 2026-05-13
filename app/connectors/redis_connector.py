@@ -14,12 +14,13 @@ class RedisConnector:
 
     async def connect(self):
         logging.info(f"Trying to connect to Redis: {self.url}:{self.port}")
-        self.redis = await redis.Redis(
+        self.redis = redis.Redis(
             host=self.url,
             port=self.port,
             password=self.password,
             decode_responses=True,
         )
+        await self.redis.ping()
         logging.info("Redis connected successfully")
 
     async def disconnect(self):

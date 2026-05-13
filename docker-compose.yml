@@ -9,7 +9,7 @@ services:
       auth_database:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
     env_file:
       - .env
 
@@ -31,6 +31,7 @@ services:
 
   redis:
     image: redis:latest
+    command: ["redis-server", "--requirepass", "${REDIS__PASSWORD}"]
     environment:
       REDIS_PASSWORD: ${REDIS__PASSWORD}
       REDIS_PORT: ${REDIS__PORT}
@@ -39,6 +40,11 @@ services:
       - ${REDIS__PORT}:${REDIS__PORT}
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS__PASSWORD}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   auth_data:

@@ -36,3 +36,29 @@ def set_auth_cookies(func):
         return result
 
     return wrapper
+
+
+def clear_auth_cookies(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        response: Response | None = kwargs.get("response")
+
+        if response is None:
+            raise RuntimeError("Response dependency is required for clear_auth_cookies")
+
+        result = await func(*args, **kwargs)
+
+        response.delete_cookie(
+            key="access_token",
+            secure=settings.COOKIE.SECURE,
+            samesite=settings.COOKIE.SAMESITE,
+        )
+        response.delete_cookie(
+            key="refresh_token",
+            secure=settings.COOKIE.SECURE,
+            samesite=settings.COOKIE.SAMESITE,
+        )
+
+        return result
+
+    return wrapper
