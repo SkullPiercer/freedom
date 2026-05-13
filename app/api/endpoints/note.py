@@ -1,7 +1,10 @@
-from fastapi import APIRouter, status
+from typing import Annotated
+
+from fastapi import APIRouter, Body, status
 
 from app.api.dep.auth import CurrentUserIdDep
 from app.api.dep.pagination import PaginationDep
+from app.api.examples.note import note_examples
 from app.api.schemas.note import NoteCreateRequest, NoteUpdateRequest
 from app.services.notes_rpc import NotesRPCService
 
@@ -9,7 +12,10 @@ router = APIRouter()
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_note(note: NoteCreateRequest, user_id: CurrentUserIdDep):
+async def create_note(
+    note: Annotated[NoteCreateRequest, Body(..., openapi_examples=note_examples)],
+    user_id: CurrentUserIdDep,
+):
     return await NotesRPCService().create_note(
         user_id=user_id,
         payload=note.model_dump(),
