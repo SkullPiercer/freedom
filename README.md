@@ -1,6 +1,6 @@
 # FastAPI Notes Service
 
-FastAPI-сервис для управления пользовательскими заметками с JWT-авторизацией, refresh-token rotation через Redis и асинхронной обработкой CRUD-операций заметок через RabbitMQ RPC.
+FastAPI-сервис для управления пользовательскими заметками. В проекте реализованы JWT-авторизация, refresh-token rotation через Redis, CRUD заметок и асинхронное взаимодействие с RabbitMQ по RPC-паттерну.
 
 ## Стек
 
@@ -10,8 +10,7 @@ FastAPI-сервис для управления пользовательски�
 - PostgreSQL 16
 - Alembic
 - Redis
-- RabbitMQ
-- aio-pika
+- RabbitMQ + aio-pika
 - PyJWT
 - pwdlib / Argon2
 - Docker Compose
@@ -19,7 +18,7 @@ FastAPI-сервис для управления пользовательски�
 
 ## Архитектура
 
-Авторизация выполняется в API-сервисе напрямую:
+Авторизация выполняется API-сервисом напрямую:
 
 ```text
 HTTP auth request -> FastAPI -> PostgreSQL / Redis -> HTTP response
@@ -31,45 +30,61 @@ HTTP auth request -> FastAPI -> PostgreSQL / Redis -> HTTP response
 HTTP /notes -> FastAPI -> RabbitMQ -> notes_worker -> PostgreSQL -> RabbitMQ -> FastAPI -> HTTP response
 ```
 
-API-сервис не выполняет CRUD заметок напрямую. Он отправляет RPC-запрос в очередь `notes_rpc`, а `notes_worker` обрабатывает команду и возвращает ответ.
+API-сервис не выполняет CRUD заметок напрямую. Он отправляет RPC-запрос в очередь `notes_rpc`, а `notes_worker` обрабатывает команду, работает с базой данных и возвращает ответ через RabbitMQ.
 
 ## Быстрый Старт
 
-1. Создайте `.env` из примера:
+1. Клонируйте репозиторий:
+
+```bash
+git clone git@github.com:SkullPiercer/freedom.git
+```
+
+2. Перейдите в директорию проекта:
+
+```bash
+cd freedom
+```
+
+3. Создайте `.env` из примера:
 
 ```bash
 cp .env.example .env
 ```
 
-2. Запустите сервисы:
+4. Если запускаете проект на Windows, убедитесь, что у `entrypoint.sh` стоит `End of Line Sequence: LF`.
+
+5. Запустите сервисы:
 
 ```bash
 docker compose up --build
 ```
 
-3. Откройте документацию API:
+6. Откройте Swagger:
 
 ```text
 http://127.0.0.1:8000/docs
 ```
 
-RabbitMQ Management UI:
+RabbitMQ Management UI доступен по адресу:
 
 ```text
 http://127.0.0.1:15672
 ```
 
-Логин и пароль берутся из `.env`:
+Логин и пароль RabbitMQ берутся из `.env`:
 
 ```env
 RABBITMQ__USER=guest
 RABBITMQ__PASSWORD=guest
 ```
 
-## Сервисы Docker Compose
+## Docker Compose
+
+Проект поднимает следующие сервисы:
 
 - `auth` - FastAPI API-сервис.
-- `notes_worker` - worker, который обрабатывает CRUD заметок из RabbitMQ.
+- `notes_worker` - worker для обработки CRUD-команд заметок из RabbitMQ.
 - `auth_database` - PostgreSQL.
 - `redis` - хранение активных refresh-токенов.
 - `rabbitmq` - брокер сообщений для RPC по заметкам.
@@ -78,7 +93,7 @@ RABBITMQ__PASSWORD=guest
 
 Все необходимые переменные перечислены в `.env.example`.
 
-Для запуска внутри Docker Compose:
+Для запуска внутри Docker Compose используются service names:
 
 ```env
 POSTGRES__HOST=auth_database
@@ -86,7 +101,7 @@ REDIS__HOST=redis
 RABBITMQ__HOST=rabbitmq
 ```
 
-Если запускаете Alembic локально с хоста, используйте:
+Если запускаете Alembic локально с хоста, укажите:
 
 ```env
 POSTGRES__HOST=localhost
@@ -94,19 +109,19 @@ POSTGRES__HOST=localhost
 
 ## Миграции
 
-В контейнере миграции запускаются автоматически через `entrypoint.sh`:
+При запуске контейнера `auth` миграции применяются автоматически через `entrypoint.sh`:
 
 ```bash
 alembic upgrade head
 ```
 
-Создать новую миграцию локально:
+Создать новую миграцию:
 
 ```bash
 alembic revision --autogenerate -m "migration name"
 ```
 
-Применить миграции локально:
+Применить миграции вручную:
 
 ```bash
 alembic upgrade head
@@ -129,7 +144,7 @@ Body:
 }
 ```
 
-Ответ содержит пользователя, `access_token` и `refresh_token`. Также токены кладутся в `HttpOnly` cookies.
+Ответ содержит пользователя, `access_token` и `refresh_token`. Также токены устанавливаются в `HttpOnly` cookies.
 
 ### Логин
 
@@ -152,7 +167,7 @@ Body:
 POST /refresh
 ```
 
-Refresh token берётся из `HttpOnly` cookie `refresh_token`. Для Postman/CLI можно передать его в body:
+Refresh token берётся из `HttpOnly` cookie `refresh_token`. Для Postman, Swagger или CLI можно передать refresh token в body:
 
 ```json
 {
@@ -177,7 +192,7 @@ Logout удаляет refresh token из Redis и очищает auth cookies.
 
 ## Заметки
 
-Для endpoints заметок нужен `access_token`. Он может быть передан:
+Для endpoints заметок нужен `access_token`. Его можно передать двумя способами:
 
 - через `HttpOnly` cookie `access_token`;
 - через заголовок `Authorization: Bearer <access_token>`.
@@ -192,8 +207,8 @@ Body:
 
 ```json
 {
-  "title": "Первая заметка",
-  "content": "Текст заметки"
+  "title": "Shopping list",
+  "content": "Milk, bread, eggs"
 }
 ```
 
@@ -226,8 +241,8 @@ Body:
 
 ```json
 {
-  "title": "Новое название",
-  "content": "Новый текст"
+  "title": "Updated title",
+  "content": "Updated content"
 }
 ```
 
@@ -247,7 +262,7 @@ DELETE /notes/{note_id}
 
 ## RabbitMQ RPC
 
-API отправляет сообщения в очередь:
+API отправляет команды в очередь:
 
 ```env
 RABBITMQ__NOTES_QUEUE=notes_rpc
@@ -315,6 +330,12 @@ docker compose logs -f auth
 
 ```bash
 docker compose logs -f notes_worker
+```
+
+Логи RabbitMQ:
+
+```bash
+docker compose logs -f rabbitmq
 ```
 
 Форматирование и автоисправления:
