@@ -20,7 +20,11 @@ services:
       context: .
       dockerfile: app/Dockerfile
     command: ["python", "-u", "-m", "app.workers.notes_worker"]
+    environment:
+      RUN_MIGRATIONS: "false"
     depends_on:
+      auth:
+        condition: service_started
       auth_database:
         condition: service_healthy
       rabbitmq:
