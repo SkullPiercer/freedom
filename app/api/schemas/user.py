@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, EmailStr, SecretStr, field_validator
 
 class UserCreate(BaseModel):
@@ -10,3 +12,10 @@ class UserCreate(BaseModel):
         if len(value.get_secret_value().strip()) < 8:
             raise ValueError("Password must be at least 8 characters long")
         return value
+
+class UserDBSchema(BaseModel):
+    id: int
+    email: EmailStr
+    hashed_password: str
+    created_at: datetime
+    updated_at: datetime
