@@ -28,12 +28,19 @@ class RedisSettings(BaseModel):
     def REDIS_URL(self) -> str:
         return f"redis://{self.HOST}:{self.PORT}"
 
+class JWTSettings(BaseModel):
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
+
 class Settings(BaseSettings):
     APP_TITLE: str
     MODE: Literal['local', 'dev', 'prod', 'test'] = 'local'
 
     POSTGRES: PostgresSettings
     REDIS: RedisSettings
+
+    JWT: JWTSettings
 
 
     model_config = SettingsConfigDict(

@@ -25,3 +25,8 @@ class UserDBSchema(BaseModel):
     hashed_password: str
     created_at: datetime
     updated_at: datetime
+
+
+class UserCreateResponse(BaseModel):
+    user: UserDBSchema
+    access_token: str
