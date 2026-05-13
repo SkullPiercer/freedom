@@ -5,17 +5,27 @@ from fastapi import FastAPI
 import uvicorn
 
 from app.core.config import settings
-from app.core.db import check_db_connection
+from app.core.db import check_db_connection, engine
 from app.api.routers import main_router
 from app.exceptions import register_exception_handlers
+from app.connectors.redis_connector import redis_manager
 
 logger = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    await redis_manager.connect()
+    logger.info("Redis connected successfully")
+
     await check_db_connection()
-    logger.info("Соединение с базой данных установлено")
+    logger.info("Database connected")
     yield
+
+    await redis_manager.disconnect()
+    logger.info("Redis disconnected")
+
+    await engine.dispose()
+    logger.info("Database disconnected")
 
 app = FastAPI(title=settings.APP_TITLE, lifespan=lifespan)
 

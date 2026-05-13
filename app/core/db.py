@@ -35,4 +35,4 @@ async_session_maker = async_sessionmaker(
 async def check_db_connection():
     async with engine.connect() as conn:
         res = await conn.execute(text("SELECT version()"))
-        logger.info("Версия базы данных: %s", res.fetchone())
+        logger.info("Database version: %s", res.fetchone())
