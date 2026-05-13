@@ -28,11 +28,18 @@ class RedisSettings(BaseModel):
     def REDIS_URL(self) -> str:
         return f"redis://{self.HOST}:{self.PORT}"
 
+
 class JWTSettings(BaseModel):
     SECRET_KEY: str
     ALGORITHM: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_MINUTES: int
+
+
+class CookieSettings(BaseModel):
+    SECURE: bool = False
+    SAMESITE: Literal["lax", "strict", "none"] = "lax"
+
 
 class Settings(BaseSettings):
     APP_TITLE: str
@@ -42,7 +49,7 @@ class Settings(BaseSettings):
     REDIS: RedisSettings
 
     JWT: JWTSettings
-
+    COOKIE: CookieSettings
 
     model_config = SettingsConfigDict(
         env_file=".env",

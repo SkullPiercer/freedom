@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 
 from app.api.schemas.user import (
     UserCreateRequest,
@@ -7,6 +7,7 @@ from app.api.schemas.user import (
 )
 from app.api.dep.db import DBDep
 from app.services.user import UserService
+from app.api.api_decorators.user import set_auth_cookies
 
 router = APIRouter()
 
@@ -14,11 +15,14 @@ router = APIRouter()
 async def create_user(user: UserCreateRequest, db: DBDep):
     return await UserService(db).create_user(user)
 
+
 @router.post("/login")
-async def login(user: UserLoginRequest, db: DBDep):
+@set_auth_cookies
+async def login(user: UserLoginRequest, db: DBDep, response: Response):
     return await UserService(db).login(user)
 
 
 @router.post("/refresh")
-async def refresh_token(token: UserRefreshTokenRequest, db: DBDep):
+@set_auth_cookies
+async def refresh_token(token: UserRefreshTokenRequest, db: DBDep, response: Response):
     return await UserService(db).refresh_token(token)
